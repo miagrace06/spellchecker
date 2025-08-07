@@ -6,19 +6,13 @@
 #include <cmath>
 #include <stdexcept>
 
-WordList::WordList(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file) {
-        throw std::runtime_error("Failed to open file: " + filename);
-    }
-
-    std::string line;
-    while (std::getline(file, line)) {
-        if (!line.empty()) {
-            words_.push_back(line);
-        }
+WordList::WordList(std::istream& stream) {
+    std::string word;
+    while (stream >> word) {
+        mWords.push_back(word);
     }
 }
+
 
 std::string WordList::suggest(const std::vector<std::vector<int>>& input, int n) const {
     if (words_.empty()) return "";
