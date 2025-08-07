@@ -54,41 +54,35 @@ void Heap::push(const std::string& value, float score) {
 }
 
 Heap::Entry Heap::pop() {
-    if (mCount == 0) throw std::underflow_error("Heap is empty");
-    Entry min = mData[0];
-    Entry last = mData[--mCount];
-    size_t i = 0;
-    while (true) {
-        size_t left = 2 * i + 1, right = 2 * i + 2, smallest = i;
-        if (left < mCount && mData[left].score < mData[smallest].score) smallest = left;
-        if (right < mCount && mData[right].score < mData[smallest].score) smallest = right;
-        if (smallest == i) break;
-        mData[i] = mData[smallest];
-        i = smallest;
+    if (mCount == 0) {
+        std::cout << "Underflow." << std::endl;
+        return Entry{"", 0};
     }
-    mData[i] = last;
-    return min;
+    Entry topEntry = mData[0];
+    mData[0] = mData[mCount - 1];
+    mCount--;
+    percolateDown(0);
+    std::cout << "popped (" << topEntry.value << " " << topEntry.score << ")" << std::endl;
+    return topEntry;
 }
 
+
 Heap::Entry Heap::pushpop(const std::string& value, float score) {
-    if (mCount < mCapacity) {
-        push(value, score);
-        return pop();
-    } else if (mCapacity == 0 || score >= mData[0].score) {
-        Entry top = mData[0];
-        mData[0] = {value, score};
-        // Percolate down
-        size_t i = 0;
-        while (true) {
-            size_t left = 2 * i + 1, right = 2 * i + 2, smallest = i;
-            if (left < mCount && mData[left].score < mData[smallest].score) smallest = left;
-            if (right < mCount && mData[right].score < mData[smallest].score) smallest = right;
-            if (smallest == i) break;
-            std::swap(mData[i], mData[smallest]);
-            i = smallest;
-        }
-        return top;
-    } else {
-        return {value, score};
+    if (mCount == 0) {
+        std::cout << "Underflow." << std::endl;
+        return Entry{"", 0};
     }
+
+    Entry oldTop = mData[0];
+
+    if (score > oldTop.score) {
+        mData[0] = Entry{value, score};
+        percolateDown(0);
+    } else {
+        // New score is smaller or equal — don't insert, just return
+    }
+
+    std::cout << "popped (" << oldTop.value << " " << oldTop.score << ")" << std::endl;
+    return oldTop;
 }
+
