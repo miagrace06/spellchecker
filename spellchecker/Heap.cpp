@@ -77,7 +77,33 @@ Heap::Entry Heap::pop() {
     mCount--;
     if (mCount > 0) {
         mData[0] = mData[mCount];
-        percolateDown(0);
+        
+        size_t index = 0;
+        while (true) {
+            size_t left = index * 2 + 1;
+            size_t right = index * 2 + 2;
+            size_t smallest = index;
+            
+            if (left < mCount && mData[left].score < mData[smallest].score) {
+                smallest = left;
+            }
+            if (right < mCount && mData[right].score < mData[smallest].score) {
+                smallest = right;
+            }
+            
+            if (left < mCount && right < mCount && 
+                mData[left].score == mData[right].score && 
+                mData[left].score < mData[index].score) {
+                smallest = left;
+            }
+            
+            if (smallest != index) {
+                std::swap(mData[index], mData[smallest]);
+                index = smallest;
+            } else {
+                break;
+            }
+        }
     }
     
     return result;
@@ -92,12 +118,8 @@ Heap::Entry Heap::pushpop(const std::string& value, float score) {
     
     mData[0].value = value;
     mData[0].score = score;
-    percolateDown(0);
     
-    return result;
-}
-
-void Heap::percolateDown(size_t index) {
+    size_t index = 0;
     while (true) {
         size_t left = index * 2 + 1;
         size_t right = index * 2 + 2;
@@ -123,4 +145,6 @@ void Heap::percolateDown(size_t index) {
             break;
         }
     }
+    
+    return result;
 }
