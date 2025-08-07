@@ -1,47 +1,49 @@
 #include "WordList.h"
-#include "Heap.h"
-
-#include <fstream>
-#include <sstream>
 #include <cmath>
-#include <stdexcept>
+#include <limits>
+
+static float distanceSquared(const std::vector<Point>& a, const std::vector<Point>& b) {
+    float sum = 0.0f;
+    size_t n = a.size();
+    for (size_t i = 0; i < n; ++i) {
+        float dx = a[i].x - b[i].x;
+        float dy = a[i].y - b[i].y;
+        sum += dx * dx + dy * dy;
+    }
+    return sum;
+}
 
 WordList::WordList(std::istream& stream) {
-    std::string word;
-    while (stream >> word) {
-        mWords.push_back(word);
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (!line.empty()) {
+            mWords.push_back(line);
+        }
     }
 }
 
+Heap WordList::correct(const std::vector<Point>& points, size_t maxcount, float cutoff) const {
+    Heap heap(maxcount);
 
-std::string WordList::suggest(const std::vector<std::vector<int>>& input, int n) const {
-    if (words_.empty()) return "";
+    for (const std::string& word : mWords) {
+        if (word.length() != points.size()) continue;
 
-    Heap topSuggestions(n); 
-
-    for (const std::string& word : words_) {
-        if (word.size() != input.size()) continue; 
-
-        double dist = 0.0;
-
-        for (size_t i = 0; i < word.size(); ++i) {
-            char c = word[i];
-            if (c < 'a' || c > 'z') {
-                dist = std::numeric_limits<double>::max();
-                break;
-            }
-
-            int index = c - 'a';
-            int dx = input[i][0] - index;
-            int dy = input[i][1] - index;
-            dist += dx * dx + dy * dy;
+        std::vector<Point> refPoints;
+        for (char c : word) {
+            refPoints.push_back(Point::fromChar(c));
         }
 
-        if (dist < std::numeric_limits<double>::max()) {
-            topSuggestions.push(word, dist);
+        float score = distanceSquared(points, refPoints);
+        if (score < cutoff) {
+            if (heap.count() < maxcount) {
+                heap.push(word, score);
+            } else {
+                if (score < heap.top().score) {
+                    heap.pushpop(word, score);
+                }
+            }
         }
     }
 
-    if (topSuggestions.empty()) return "";
-    return topSuggestions.top();
+    return heap;
 }
