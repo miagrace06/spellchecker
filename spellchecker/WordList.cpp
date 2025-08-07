@@ -1,22 +1,23 @@
 #include "WordList.h"
+#include "Point.h"
+#include <iostream>
 #include <cmath>
-#include <limits>
-
-static float distanceSquared(const std::vector<Point>& a, const std::vector<Point>& b) {
-    float sum = 0.0f;
-    size_t n = a.size();
-    for (size_t i = 0; i < n; ++i) {
-        float dx = a[i].x - b[i].x;
-        float dy = a[i].y - b[i].y;
-        sum += dx * dx + dy * dy;
-    }
-    return sum;
-}
+#include <cctype>
 
 WordList::WordList(std::istream& stream) {
     std::string line;
     while (std::getline(stream, line)) {
-        if (!line.empty()) {
+        if (line.empty()) continue;
+        
+        bool validWord = true;
+        for (char c : line) {
+            if (!islower(c)) {
+                validWord = false;
+                break;
+            }
+        }
+        
+        if (validWord) {
             mWords.push_back(line);
         }
     }
@@ -24,26 +25,37 @@ WordList::WordList(std::istream& stream) {
 
 Heap WordList::correct(const std::vector<Point>& points, size_t maxcount, float cutoff) const {
     Heap heap(maxcount);
-
+    
     for (const std::string& word : mWords) {
-        if (word.length() != points.size()) continue;
-
-        std::vector<Point> refPoints;
-        for (char c : word) {
-            refPoints.push_back(Point::fromChar(c));
+        if (word.length() != points.size()) {
+            continue;
         }
-
-        float score = distanceSquared(points, refPoints);
-        if (score < cutoff) {
+        
+        float totalScore = 0.0f;
+        for (size_t i = 0; i < word.length(); ++i) {
+            int letterIndex = word[i] - 'a';
+            Point keyLocation = QWERTY[letterIndex];
+            
+            float dx = points[i].x - keyLocation.x;
+            float dy = points[i].y - keyLocation.y;
+            float distance = std::sqrt(dx * dx + dy * dy);
+            
+            float letterScore = 1.0f / (10.0f * distance * distance + 1.0f);
+            totalScore += letterScore;
+        }
+        
+        float averageScore = totalScore / word.length();
+        
+        if (averageScore >= cutoff) {
             if (heap.count() < maxcount) {
-                heap.push(word, score);
+                heap.push(word, averageScore);
             } else {
-                if (score < heap.top().score) {
-                    heap.pushpop(word, score);
+                if (averageScore > heap.top().score) {
+                    heap.pushpop(word, averageScore);
                 }
             }
         }
     }
-
+    
     return heap;
 }
