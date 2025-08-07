@@ -1,104 +1,94 @@
 #include "Heap.h"
 #include <stdexcept>
-#include <cmath> 
+#include <utility>
 
-Heap::Heap() {}
+Heap::Heap(size_t capacity)
+    : mData(new Entry[capacity]), mCapacity(capacity), mCount(0) {}
 
-Heap::Heap(const Heap& other) {
-    for (Entry* e : other.data_) {
-        data_.push_back(new Entry(*e)); 
+Heap::Heap(const Heap& other)
+    : mData(new Entry[other.mCapacity]), mCapacity(other.mCapacity), mCount(other.mCount) {
+    for (size_t i = 0; i < mCount; ++i) {
+        mData[i] = other.mData[i];
     }
 }
 
-Heap& Heap::operator=(const Heap& other) {
-    if (this != &other) {
-        clear(); 
-        for (Entry* e : other.data_) {
-            data_.push_back(new Entry(*e));
-        }
-    }
-    return *this;
+Heap::Heap(Heap&& other)
+    : mData(other.mData), mCapacity(other.mCapacity), mCount(other.mCount) {
+    other.mData = nullptr;
+    other.mCapacity = 0;
+    other.mCount = 0;
 }
 
 Heap::~Heap() {
-    clear();
+    delete[] mData;
 }
 
-void Heap::clear() {
-    for (Entry* e : data_) {
-        delete e;
+size_t Heap::capacity() const {
+    return mCapacity;
+}
+
+size_t Heap::count() const {
+    return mCount;
+}
+
+const Heap::Entry& Heap::lookup(size_t index) const {
+    if (index >= mCount) throw std::out_of_range("Index out of bounds");
+    return mData[index];
+}
+
+const Heap::Entry& Heap::top() const {
+    if (mCount == 0) throw std::underflow_error("Heap is empty");
+    return mData[0];
+}
+
+void Heap::push(const std::string& value, float score) {
+    if (mCount >= mCapacity) throw std::overflow_error("Heap is full");
+    size_t i = mCount++;
+    while (i > 0) {
+        size_t parent = (i - 1) / 2;
+        if (score >= mData[parent].score) break;
+        mData[i] = mData[parent];
+        i = parent;
     }
-    data_.clear();
+    mData[i] = {value, score};
 }
 
-bool Heap::isEmpty() const {
-    return data_.empty();
-}
-
-int Heap::size() const {
-    return static_cast<int>(data_.size());
-}
-
-const Entry& Heap::peek() const {
-    if (isEmpty()) {
-        throw std::runtime_error("Heap is empty");
+Heap::Entry Heap::pop() {
+    if (mCount == 0) throw std::underflow_error("Heap is empty");
+    Entry min = mData[0];
+    Entry last = mData[--mCount];
+    size_t i = 0;
+    while (true) {
+        size_t left = 2 * i + 1, right = 2 * i + 2, smallest = i;
+        if (left < mCount && mData[left].score < mData[smallest].score) smallest = left;
+        if (right < mCount && mData[right].score < mData[smallest].score) smallest = right;
+        if (smallest == i) break;
+        mData[i] = mData[smallest];
+        i = smallest;
     }
-    return *data_[0];
-}
-
-void Heap::push(Entry* e) {
-    data_.push_back(e);
-    percolateUp(data_.size() - 1);
-}
-
-Entry* Heap::removeMin() {
-    if (isEmpty()) {
-        throw std::runtime_error("Heap is empty");
-    }
-
-    Entry* min = data_[0];
-
-    data_[0] = data_.back();
-    data_.pop_back();
-
-    if (!isEmpty()) {
-        percolateDown(0);
-    }
-
+    mData[i] = last;
     return min;
 }
 
-void Heap::percolateUp(int index) {
-    while (index > 0) {
-        int parent = (index - 1) / 2;
-        if (*data_[index] < *data_[parent]) {
-            std::swap(data_[index], data_[parent]);
-            index = parent;
-        } else {
-            break;
+Heap::Entry Heap::pushpop(const std::string& value, float score) {
+    if (mCount < mCapacity) {
+        push(value, score);
+        return pop();
+    } else if (mCapacity == 0 || score >= mData[0].score) {
+        Entry top = mData[0];
+        mData[0] = {value, score};
+        // Percolate down
+        size_t i = 0;
+        while (true) {
+            size_t left = 2 * i + 1, right = 2 * i + 2, smallest = i;
+            if (left < mCount && mData[left].score < mData[smallest].score) smallest = left;
+            if (right < mCount && mData[right].score < mData[smallest].score) smallest = right;
+            if (smallest == i) break;
+            std::swap(mData[i], mData[smallest]);
+            i = smallest;
         }
-    }
-}
-
-void Heap::percolateDown(int index) {
-    int size = static_cast<int>(data_.size());
-    while (true) {
-        int left = 2 * index + 1;
-        int right = 2 * index + 2;
-        int smallest = index;
-
-        if (left < size && *data_[left] < *data_[smallest]) {
-            smallest = left;
-        }
-        if (right < size && *data_[right] < *data_[smallest]) {
-            smallest = right;
-        }
-
-        if (smallest != index) {
-            std::swap(data_[index], data_[smallest]);
-            index = smallest;
-        } else {
-            break;
-        }
+        return top;
+    } else {
+        return {value, score};
     }
 }
